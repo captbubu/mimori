@@ -99,7 +99,7 @@
             // 
             this.button1.Location = new System.Drawing.Point(453, 25);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.Size = new System.Drawing.Size(112, 23);
             this.button1.TabIndex = 7;
             this.button1.Text = "Send message";
             this.button1.UseVisualStyleBackColor = true;
