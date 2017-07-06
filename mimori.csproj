@@ -90,6 +90,9 @@
     <Folder Include=".git\objects\pack\" />
     <Folder Include=".git\refs\tags\" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Main.cs" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSHARP.Targets" />
   <ProjectExtensions>
     <VisualStudio AllowExistingFolder="true" />
