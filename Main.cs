@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿
+using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace mimori
 {
@@ -10,7 +12,12 @@ namespace mimori
         string subject;
         string message;
     }
-    class Main
+    class Mimori
     {
+        static void Main()
+        {
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new MainWindow());
+        }
     }
 }
