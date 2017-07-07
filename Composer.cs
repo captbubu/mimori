@@ -33,11 +33,12 @@ namespace mimori
 
         private void button1_Click(object sender, EventArgs e)
         {
-            var mail = new Mail();
+            var mail = new Mimori.Mail();
             mail.toList.AddRange(to_textBox.Text.Split(';'));
             mail.subject = subject_textBox.Text;
             mail.message = message_textBox.Text;
-            
+            mail.SendMessage();
+            this.Close();
         }
     }
 }
