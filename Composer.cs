@@ -37,6 +37,7 @@ namespace mimori
             mail.toList.AddRange(to_textBox.Text.Split(';'));
             mail.subject = subject_textBox.Text;
             mail.message = message_textBox.Text;
+            
         }
     }
 }
