@@ -16,8 +16,8 @@ namespace mimori
         public class Mail
         {
             public List<string> toList = new List<string>();
-            List<string> ccList = new List<string>();
-            List<string> bccList = new List<string>();
+            public List<string> ccList = new List<string>();
+            public List<string> bccList = new List<string>();
             public string subject { get; set; }
             public string message { get; set; }
 
@@ -35,7 +35,11 @@ namespace mimori
             private void SendInBackground()
             {
                 ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Myrms);
-                var mail = new MailMessage(user.name, toList[0]);
+                var mail = new MailMessage(user.name, toList.Count > 0 ? string.Join(",",  toList.ToArray()) : "");
+                if (ccList.Count > 0)
+                    mail.CC.Add(string.Join(",", ccList.ToArray()));
+                if (bccList.Count > 0)
+                    mail.Bcc.Add(string.Join(",", bccList.ToArray()));
                 mail.Subject = subject;
                 mail.Body = message;
                 var smtpc = new SmtpClient(user.server, user.port);
@@ -78,8 +82,6 @@ namespace mimori
                 return new NetworkCredential(user.name, user.password);
             }
         }
-
-        
 
         static void Main()
         {
