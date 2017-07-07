@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Windows.Forms;
 using System.Configuration;
 using System.Net;
@@ -13,6 +14,8 @@ namespace mimori
 {
     class Mimori
     {
+        const string clientIdString = "Mimori 0.0.1";
+
         public class Mail
         {
             public List<string> toList = new List<string>();
@@ -20,6 +23,7 @@ namespace mimori
             public List<string> bccList = new List<string>();
             public string subject { get; set; }
             public string message { get; set; }
+            public string[] headers;
 
             private static bool Myrms(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors)
             {
@@ -35,6 +39,8 @@ namespace mimori
             private void SendInBackground()
             {
                 ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Myrms);
+                var headers = new NameValueCollection();
+                headers.Add("X-Mailer", clientIdString);
                 var mail = new MailMessage(user.name, toList.Count > 0 ? string.Join(",",  toList.ToArray()) : "");
                 if (ccList.Count > 0)
                     mail.CC.Add(string.Join(",", ccList.ToArray()));
@@ -42,6 +48,7 @@ namespace mimori
                     mail.Bcc.Add(string.Join(",", bccList.ToArray()));
                 mail.Subject = subject;
                 mail.Body = message;
+                mail.Headers.Add(headers);
                 var smtpc = new SmtpClient(user.server, user.port);
                 smtpc.UseDefaultCredentials = false;
                 smtpc.DeliveryMethod = SmtpDeliveryMethod.Network;
