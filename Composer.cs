@@ -20,5 +20,23 @@ namespace mimori
         {
 
         }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            var mail = new Mail();
+            mail.toList.AddRange(to_textBox.Text.Split(';'));
+            mail.subject = subject_textBox.Text;
+            mail.message = message_textBox.Text;
+        }
     }
 }
