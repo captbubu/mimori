@@ -13,139 +13,13 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Net.Mime;
 
 namespace mimori
 {
     class Mimori
     {
         const string clientIdString = "Mimori 0.0.1";
-
-        public class IMAP
-        {
-            private static TcpClient tcpc = null;
-            private static SslStream ssl = null;
-            private static byte[] dummy;
-            private static byte[] buffer;
-            StringBuilder sb = new StringBuilder();
-            public int prefix { get; set; }
-            List<string> responses;
-            List<int> messageList = new List<int>();
-
-            class ImapMessage
-            {
-                string from { get; set; }
-                string subject { get; set; }
-            }
-            public IMAP()
-            {
-                tcpc = new TcpClient(user.imapServer, user.imapPort);
-                ssl = new SslStream(tcpc.GetStream(), false, Myrms, null);
-                prefix = 1;
-                responses = new List<string>();
-            }
-            private static bool Myrms(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors)
-            {
-                return true;
-            }
-            private void Receive(string command)
-            {
-                try
-                {
-                    if (command != "")
-                    {
-                        if (tcpc.Connected)
-                        {
-                            dummy = Encoding.ASCII.GetBytes("X" + prefix.ToString() + " " + command);
-                            ssl.Write(dummy, 0, dummy.Length);
-                        }
-                        else
-                        {
-                            Console.Write("tcp disconnected");
-                        }
-                    }
-                    ssl.Flush();
-                    buffer = new byte[2048];
-                    do
-                    {
-                        int bytes = ssl.Read(buffer, 0, 2048);
-                        sb.Append(Encoding.ASCII.GetString(buffer));
-                        Array.Clear(buffer, 0, buffer.Length);
-                    } while (! sb.ToString().Contains("X" + prefix.ToString() + " OK"));
-                    responses.Add(sb.ToString());
-                    //sb.Clear();
-                    prefix++;
-                }
-                catch (Exception)
-                {
-                    Console.WriteLine("IMAP command failed");
-                }
-            }
-            public void Auth()
-            {
-                var stream = tcpc.GetStream();
-                var writer = new StreamWriter(stream) { AutoFlush = true };
-                var reader = new StreamReader(stream);
-      
-                var resp = reader.ReadLine();
-                      
-                writer.WriteLine("1 STARTTLS");
-                resp = reader.ReadLine();
-                
-                ssl.AuthenticateAsClient(user.imapServer);
-                string response;
-                Receive("LOGIN " + user.name + " " + user.password + "\r\n");
-                Receive("SELECT INBOX\r\n");
-                sb.Clear();
-                Receive("UID FETCH 1:* FLAGS\r\n");
-                response = sb.ToString();
-                using (StringReader sr = new StringReader(response))
-                {
-                    string line;
-                    var resplist = new List<string>();
-                    while ((line = sr.ReadLine()) != null)
-                    {
-                        string pattern = "UID\\s+(\\d+)";
-                        Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
-                        MatchCollection m = r.Matches(line);
-                        foreach (Match match in m)
-                        {
-                            messageList.Add(int.Parse(match.Groups[1].Value));
-                        }
-                    }
-                    responses = resplist;
-                }
-                int zz = 0;
-                foreach (int msgIndex in messageList)
-                {
-                    if (++zz == 1005)
-                        break;
-                    sb.Clear();
-                    Receive("UID FETCH " + msgIndex + " (FLAGS BODY[HEADER.FIELDS (DATE FROM SUBJECT)])\r\n");
-                    response = sb.ToString();
-                    using (StringReader sr = new StringReader(response))
-                    {
-                        string line;
-                        var resplist = new List<string>();
-                        while ((line = sr.ReadLine()) != null) {
-                            string pattern = "^From:\\s+(.*)$";
-                            Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
-                            MatchCollection m = r.Matches(line);
-                            foreach (Match match in m)
-                            {
-                                string from = match.Groups[1].Value;
-                                DataGridViewRow row = (DataGridViewRow)mw.dataGridView2.Rows[0].Clone();
-                                row.Cells[0].Value = from;
-                                mw.dataGridView2.Rows.Add(row);
-                            }
-                        }
-                    }
-                    
-                    //row.Cells[0].Values
-                    //mw.dataGridView2
-                }
-                response = sb.ToString();
-            }
-        }
 
         public class Mail
         {
@@ -229,7 +103,9 @@ namespace mimori
 
         public static void FetchImap()
         {
-            imap.Auth();
+            imap.Auth(user.name, user.password);
+            imap.SelectFolder("INBOX");
+            imap.FetchHeaders(mw.dataGridView2);
         }
 
         static void Main()
@@ -239,11 +115,10 @@ namespace mimori
                 ReadSetting("user1.smtpserver"), int.Parse(ReadSetting("user1.smtpport")), ReadSetting("user1.imapserver"), int.Parse(ReadSetting("user1.imapport")),
                 ReadSetting("user1.name"), ReadSetting("User1.password"));
 
-            imap = new IMAP();
+            imap = new IMAP(user.imapServer, user.imapPort);
             Thread fimap = new Thread(FetchImap);
             fimap.Start();
             Application.Run(mw);
-            
         }
 
         static string ReadSetting(string key)
