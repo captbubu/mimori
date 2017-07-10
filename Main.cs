@@ -9,11 +9,7 @@ using System.Net.Mail;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
-using System.Net.Sockets;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.IO;
-using System.Net.Mime;
+using System.Timers;
 
 namespace mimori
 {
@@ -105,7 +101,8 @@ namespace mimori
         {
             imap.Auth(user.name, user.password);
             imap.SelectFolder("INBOX");
-            imap.FetchHeaders(mw.dataGridView2);
+            imap.FetchHeaders();
+            int i = 0;
         }
 
         static void Main()
@@ -118,7 +115,42 @@ namespace mimori
             imap = new IMAP(user.imapServer, user.imapPort);
             Thread fimap = new Thread(FetchImap);
             fimap.Start();
+            var refreshTimer = new System.Timers.Timer();
+            refreshTimer.Interval = 3000;
+            refreshTimer.Enabled = true;
+            refreshTimer.Elapsed += new ElapsedEventHandler(refreshHappened);
+
             Application.Run(mw);
+        }
+
+        private static void refreshHappened(object source, ElapsedEventArgs args)
+        {
+            if (! mw.IsHandleCreated)
+            {
+                return;
+            }
+
+            if (mw.dataGridView2.RowCount == imap.NrUids)
+            {
+                return;
+            }
+
+            // Invoke() kell, különben thread-ek között adatmanipuláció miatt exception lesz
+            mw.dataGridView2.Invoke(new Action(() =>
+            {
+                // kell egy másolat, mert ha az IMAP thread új elemet ad a foreach közben, exception lesz
+                var listCopy = new List<IMAP.MessageHeader>(imap.headers);
+                foreach (IMAP.MessageHeader mh in listCopy)
+                {
+                    if (!imap.displayedHeaders.Contains(mh.UID))
+                    {
+                        DataGridViewRow row = (DataGridViewRow)mw.dataGridView2.Rows[0].Clone();
+                        row.Cells[0].Value = mh.From;
+                        mw.dataGridView2.Rows.Add(row);
+                        imap.displayedHeaders.Add(mh.UID);
+                    }
+                }
+            }));
         }
 
         static string ReadSetting(string key)

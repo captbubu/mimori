@@ -6,22 +6,39 @@ using System.Net.Security;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 using System.IO;
-using System.Windows.Forms;
 
 namespace mimori
 {
     public class IMAP
     {
+        public class MessageHeader
+        {
+            public MessageHeader(int uid, string from = null, string subject = null, string date = null)
+            {
+                UID = uid;
+                Subject = subject;
+                From = from;
+                Date = date;
+            }
+            public int UID { get; }
+            public string Subject { get; }
+            public string From { get; }
+            public string Date { get; }
+        }
+
         public string server { get; set; }
         public int port { get; set; }
         private static TcpClient tcpc = null;
         private static SslStream ssl = null;
+        public int NrUids { get; set; }
         private static byte[] dummy;
         private static byte[] buffer;
         StringBuilder sb = new StringBuilder();
         public int prefix { get; set; }
         List<string> responses;
         List<int> uidList = new List<int>();
+        public List<MessageHeader> headers = new List<MessageHeader>();
+        public List<int> displayedHeaders = new List<int>();
 
         public IMAP(string server, int port)
         {
@@ -31,6 +48,8 @@ namespace mimori
             ssl = new SslStream(tcpc.GetStream(), false, Myrms, null);
             prefix = 1;
             responses = new List<string>();
+            NrUids = 0;
+            //headerList = 
         }
 
         private static bool Myrms(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors)
@@ -113,17 +132,22 @@ namespace mimori
                 }
                 responses = resplist;
             }
+            NrUids = uidList.Count;
         }
 
-        public void FetchHeaders(DataGridView dgv)
+        public void FetchHeaders()
         {
             FetchUidList();
-            int zz = 0;
+
+            string from = null;
+
+            int uid;
             foreach (int msgIndex in uidList)
             {
-                if (++zz == 100)
-                    break;
+                //if (++zz == 100)
+                //    break;
                 string response = Receive("UID FETCH " + msgIndex + " (FLAGS BODY[HEADER.FIELDS (DATE FROM SUBJECT)])");
+                uid = msgIndex;
                 using (StringReader sr = new StringReader(response))
                 {
                     string line;
@@ -134,17 +158,112 @@ namespace mimori
                         MatchCollection m = r.Matches(line);
                         foreach (Match match in m)
                         {
-                            byte[] lofasz;
-                            lofasz = Encoding.UTF8.GetBytes(match.Groups[1].Value);
-                            string from = Encoding.Default.GetString(lofasz);
-                            DataGridViewRow row = (DataGridViewRow) dgv.Rows[0].Clone();
-                            row.Cells[0].Value = from;
-                            dgv.Rows.Add(row);
+                            byte[] bytes;
+                            bytes = Encoding.UTF8.GetBytes(match.Groups[1].Value);
+                            from = DecodeString(Encoding.Default.GetString(bytes));
                         }
                     }
                 }
-                response = sb.ToString();
+                headers.Add(new MessageHeader(uid : uid, from: from));
             }
+        }
+
+        private string DecodeString(string instr)
+        {
+            string pattern = @"^=\?([\w\d-]+)\?([QB])\?([\w\d_\-\.=]+)\?=";
+            Regex r = new Regex(pattern);
+            MatchCollection m = r.Matches(instr);
+            string readable = null;
+            if (m.Count > 0)
+            {
+                foreach (Match match in m)
+                {
+                    string encoding = match.Groups[1].Value;
+                    bool enctype = match.Groups[2].Value == "Q" ? true : false;
+                    string toDecode = match.Groups[3].Value;
+
+                    try
+                    {
+                        Encoding enc = Encoding.GetEncoding(encoding);
+                        if (enctype == false)
+                        {
+                            // Base64
+                            var bytes = Convert.FromBase64String(toDecode);
+                            readable = enc.GetString(bytes);
+                        }
+                        else
+                        {
+                            // Quted printable
+                            readable = DecodeQuotedPrintables(toDecode, encoding);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        return null;
+                    }
+                }
+            }
+            else
+            {
+                readable = instr;
+            }
+            return readable;
+        }
+
+        private static string DecodeQuotedPrintables(string input, string charSet)
+        {
+            if (string.IsNullOrEmpty(charSet))
+            {
+                var charSetOccurences = new Regex(@"=\?.*\?Q\?", RegexOptions.IgnoreCase);
+                var charSetMatches = charSetOccurences.Matches(input);
+                foreach (Match match in charSetMatches)
+                {
+                    charSet = match.Groups[0].Value.Replace("=?", "").Replace("?Q?", "");
+                    input = input.Replace(match.Groups[0].Value, "").Replace("?=", "");
+                }
+            }
+
+            Encoding enc = new ASCIIEncoding();
+            if (!string.IsNullOrEmpty(charSet))
+            {
+                try
+                {
+                    enc = Encoding.GetEncoding(charSet);
+                }
+                catch
+                {
+                    enc = new ASCIIEncoding();
+                }
+            }
+
+            //decode iso-8859-[0-9]
+            var occurences = new Regex(@"=[0-9A-Z]{2}", RegexOptions.Multiline);
+            var matches = occurences.Matches(input);
+            foreach (Match match in matches)
+            {
+                try
+                {
+                    byte[] b = new byte[] { byte.Parse(match.Groups[0].Value.Substring(1), System.Globalization.NumberStyles.AllowHexSpecifier) };
+                    char[] hexChar = enc.GetChars(b);
+                    input = input.Replace(match.Groups[0].Value, hexChar[0].ToString());
+                }
+                catch
+                {; }
+            }
+
+            //decode base64String (utf-8?B?)
+            occurences = new Regex(@"\?utf-8\?B\?.*\?", RegexOptions.IgnoreCase);
+            matches = occurences.Matches(input);
+            foreach (Match match in matches)
+            {
+                byte[] b = Convert.FromBase64String(match.Groups[0].Value.Replace("?utf-8?B?", "").Replace("?UTF-8?B?", "").Replace("?", ""));
+                string temp = Encoding.UTF8.GetString(b);
+                input = input.Replace(match.Groups[0].Value, temp);
+            }
+
+            input = input.Replace("=\r\n", "");
+
+            return input;
         }
     }
 }
