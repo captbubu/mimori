@@ -21,5 +21,10 @@ namespace mimori
             var composeForm = new Composer();
             composeForm.Show();
         }
+
+        private void dataGridView2_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
     }
 }

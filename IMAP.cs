@@ -31,9 +31,6 @@ namespace mimori
         private static TcpClient tcpc = null;
         private static SslStream ssl = null;
         public int NrUids { get; set; }
-        private static byte[] dummy;
-        private static byte[] buffer;
-        StringBuilder sb = new StringBuilder();
         public int prefix { get; set; }
         List<string> responses;
         List<int> uidList = new List<int>();
@@ -49,7 +46,6 @@ namespace mimori
             prefix = 1;
             responses = new List<string>();
             NrUids = 0;
-            //headerList = 
         }
 
         private static bool Myrms(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors)
@@ -59,6 +55,10 @@ namespace mimori
 
         private string Receive(string command)
         {
+            byte[] dummy;
+            byte[] buffer;
+            StringBuilder sb = new StringBuilder();
+
             try
             {
                 if (command != "")
@@ -135,17 +135,32 @@ namespace mimori
             NrUids = uidList.Count;
         }
 
+        private void GetNamedValue(string line, string item, ref string store)
+        {
+            string pattern = item + @":\s+(.*)";
+            Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
+            Match match = r.Match(line);
+            if (match.Success)
+            {
+                byte[] bytes = Encoding.Default.GetBytes(match.Groups[1].Value);
+                store = DecodeString(Encoding.Default.GetString(bytes));
+            }
+        }
+
         public void FetchHeaders()
         {
             FetchUidList();
 
-            string from = null;
+            string from;
+            string subject;
+            string date;
 
             int uid;
             foreach (int msgIndex in uidList)
             {
-                //if (++zz == 100)
-                //    break;
+                from = null;
+                subject = null;
+                date = null;
                 string response = Receive("UID FETCH " + msgIndex + " (FLAGS BODY[HEADER.FIELDS (DATE FROM SUBJECT)])");
                 uid = msgIndex;
                 using (StringReader sr = new StringReader(response))
@@ -153,24 +168,18 @@ namespace mimori
                     string line;
                     var resplist = new List<string>();
                     while ((line = sr.ReadLine()) != null) {
-                        string pattern = "^From:\\s+(.*)$";
-                        Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
-                        MatchCollection m = r.Matches(line);
-                        foreach (Match match in m)
-                        {
-                            byte[] bytes;
-                            bytes = Encoding.UTF8.GetBytes(match.Groups[1].Value);
-                            from = DecodeString(Encoding.Default.GetString(bytes));
-                        }
+                        GetNamedValue(line, "from", ref from);
+                        GetNamedValue(line, "subject", ref subject);
+                        GetNamedValue(line, "date", ref date);
                     }
                 }
-                headers.Add(new MessageHeader(uid : uid, from: from));
+                headers.Add(new MessageHeader(uid : uid, from: from, subject: subject, date : date));
             }
         }
 
         private string DecodeString(string instr)
         {
-            string pattern = @"^=\?([\w\d-]+)\?([QB])\?([\w\d_\-\.=]+)\?=";
+            string pattern = @"=\?([\w\d-]+)\?([QB])\?([\w\d_\-\.=+:,]+)\?=";
             Regex r = new Regex(pattern);
             MatchCollection m = r.Matches(instr);
             string readable = null;

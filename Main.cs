@@ -145,7 +145,9 @@ namespace mimori
                     if (!imap.displayedHeaders.Contains(mh.UID))
                     {
                         DataGridViewRow row = (DataGridViewRow)mw.dataGridView2.Rows[0].Clone();
-                        row.Cells[0].Value = mh.From;
+                        row.Cells[1].Value = mh.Subject;
+                        row.Cells[2].Value = mh.From;
+                        row.Cells[3].Value = mh.Date;
                         mw.dataGridView2.Rows.Add(row);
                         imap.displayedHeaders.Add(mh.UID);
                     }

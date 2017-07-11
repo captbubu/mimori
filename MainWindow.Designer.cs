@@ -28,7 +28,6 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.button1 = new System.Windows.Forms.Button();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -36,23 +35,15 @@
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.dataGridView2 = new System.Windows.Forms.DataGridView();
-            this.Column1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Column2 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Col_icon = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Col_subject = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Col_from = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Column3 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.button1 = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView2)).BeginInit();
             this.SuspendLayout();
-            // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(24, 34);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 0;
-            this.button1.Text = "Compose...";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // menuStrip1
             // 
@@ -103,37 +94,62 @@
             // 
             // dataGridView2
             // 
-            this.dataGridView2.AccessibleRole = System.Windows.Forms.AccessibleRole.None;
-            this.dataGridView2.AllowUserToDeleteRows = false;
+            this.dataGridView2.AllowUserToResizeRows = false;
+            this.dataGridView2.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.dataGridView2.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.dataGridView2.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
             this.dataGridView2.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView2.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.Column1,
-            this.Column2,
+            this.Col_icon,
+            this.Col_subject,
+            this.Col_from,
             this.Column3});
-            this.dataGridView2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.dataGridView2.Location = new System.Drawing.Point(0, 24);
+            this.dataGridView2.Location = new System.Drawing.Point(87, 95);
             this.dataGridView2.Name = "dataGridView2";
-            this.dataGridView2.ReadOnly = true;
-            this.dataGridView2.Size = new System.Drawing.Size(988, 624);
+            this.dataGridView2.RowHeadersVisible = false;
+            this.dataGridView2.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.dataGridView2.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.dataGridView2.Size = new System.Drawing.Size(901, 553);
             this.dataGridView2.TabIndex = 4;
+            this.dataGridView2.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView2_CellContentClick);
             // 
-            // Column1
+            // Col_icon
             // 
-            this.Column1.HeaderText = "From";
-            this.Column1.Name = "Column1";
-            this.Column1.ReadOnly = true;
+            this.Col_icon.HeaderText = "";
+            this.Col_icon.Name = "Col_icon";
+            this.Col_icon.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.Col_icon.Width = 35;
             // 
-            // Column2
+            // Col_subject
             // 
-            this.Column2.HeaderText = "Subject";
-            this.Column2.Name = "Column2";
-            this.Column2.ReadOnly = true;
+            this.Col_subject.HeaderText = "Subject";
+            this.Col_subject.Name = "Col_subject";
+            this.Col_subject.Width = 400;
+            // 
+            // Col_from
+            // 
+            this.Col_from.HeaderText = "From";
+            this.Col_from.Name = "Col_from";
+            this.Col_from.Width = 200;
             // 
             // Column3
             // 
             this.Column3.HeaderText = "Date";
             this.Column3.Name = "Column3";
-            this.Column3.ReadOnly = true;
+            this.Column3.Width = 279;
+            // 
+            // button1
+            // 
+            this.button1.Image = global::mimori.Properties.Resources.email_icon_32124;
+            this.button1.Location = new System.Drawing.Point(12, 27);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(64, 61);
+            this.button1.TabIndex = 0;
+            this.button1.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // MainWindow
             // 
@@ -165,9 +181,10 @@
         private System.Windows.Forms.ToolStripMenuItem helpToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.DataGridView dataGridView1;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column1;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column2;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column3;
         public System.Windows.Forms.DataGridView dataGridView2;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Col_icon;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Col_subject;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Col_from;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Column3;
     }
 }
