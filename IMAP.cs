@@ -1,16 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Net.Sockets;
-using System.Net.Security;
-using System.Collections.Generic;
-using System.Security.Cryptography.X509Certificates;
-using System.IO;
 
 namespace mimori
 {
     public class IMAP
     {
+        [Serializable]
         public class MessageHeader
         {
             public MessageHeader(int uid, string from = null, string subject = null, string date = null)
@@ -36,6 +37,7 @@ namespace mimori
         List<int> uidList = new List<int>();
         public List<MessageHeader> headers = new List<MessageHeader>();
         public List<int> displayedHeaders = new List<int>();
+        public List<MessageHeader> savedHeaders = new List<MessageHeader>();
 
         public IMAP(string server, int port)
         {
@@ -52,6 +54,42 @@ namespace mimori
         {
             return true;
         }
+
+        #region Headers
+        private void SaveHeaders()
+        {
+            List<MessageHeader> toSave = new List<MessageHeader>();
+            foreach (MessageHeader mh in headers)
+            {
+                if (null == savedHeaders.Find(x => (x.UID == mh.UID)))
+                {
+                    toSave.Add(mh);
+                }
+            }
+            using (Stream stream = File.Open(@"c:\devel\testdata\imap.hd", FileMode.Append))
+            {
+                var binForm = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                binForm.Serialize(stream, toSave);
+            }
+        }
+
+        public void LoadHeaders()
+        {
+            try
+            {
+                using (Stream stream = File.Open(@"c:\devel\testdata\imap.hd", FileMode.Open))
+                {
+                    var binForm = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                    headers = (List<MessageHeader>)binForm.Deserialize(stream);
+                }
+                savedHeaders = new List<MessageHeader>(headers);
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+        #endregion
 
         private string Receive(string command)
         {
@@ -158,6 +196,10 @@ namespace mimori
             int uid;
             foreach (int msgIndex in uidList)
             {
+                if (displayedHeaders.Contains(msgIndex))
+                {
+                    continue;
+                }
                 from = null;
                 subject = null;
                 date = null;
@@ -175,11 +217,13 @@ namespace mimori
                 }
                 headers.Add(new MessageHeader(uid : uid, from: from, subject: subject, date : date));
             }
+            SaveHeaders();
         }
 
         private string DecodeString(string instr)
         {
-            string pattern = @"=\?([\w\d-]+)\?([QB])\?([\w\d_\-\.=+:,]+)\?=";
+            //string pattern = @"=\?([\w\d-]+)\?([QqBb])\?([\w\d_\-\.=+:,\/]+)\?=";
+            string pattern = @"=\?([\w\d-]+)\?([QqBb])\?(.*)\?=";
             Regex r = new Regex(pattern);
             MatchCollection m = r.Matches(instr);
             string readable = null;
@@ -188,7 +232,7 @@ namespace mimori
                 foreach (Match match in m)
                 {
                     string encoding = match.Groups[1].Value;
-                    bool enctype = match.Groups[2].Value == "Q" ? true : false;
+                    bool enctype = match.Groups[2].Value.ToUpper() == "Q" ? true : false;
                     string toDecode = match.Groups[3].Value;
 
                     try
@@ -208,6 +252,7 @@ namespace mimori
                     }
                     catch (Exception)
                     {
+                        // FIXME :: debuggolni
                         return null;
                     }
                 }
@@ -260,7 +305,7 @@ namespace mimori
                 {; }
             }
 
-            //decode base64String (utf-8?B?)
+            //decode base64String(utf-8 ? B ?)
             occurences = new Regex(@"\?utf-8\?B\?.*\?", RegexOptions.IgnoreCase);
             matches = occurences.Matches(input);
             foreach (Match match in matches)

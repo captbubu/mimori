@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Windows.Forms;
 using System.Configuration;
 using System.Net;
 using System.Net.Mail;
@@ -10,12 +9,13 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Timers;
+using System.Windows.Forms;
 
 namespace mimori
 {
     class Mimori
     {
-        const string clientIdString = "Mimori 0.0.1";
+        const string clientIdString = "Mimori 0.0.2";
 
         public class Mail
         {
@@ -85,9 +85,9 @@ namespace mimori
             }
         }
 
+        public static MainWindow mw = new MainWindow();
         public static IMAP imap;
         public static User user;
-        public static MainWindow mw = new MainWindow();
 
         public class MyCredentials : ICredentialsByHost
         {
@@ -102,9 +102,9 @@ namespace mimori
             imap.Auth(user.name, user.password);
             imap.SelectFolder("INBOX");
             imap.FetchHeaders();
-            int i = 0;
         }
 
+        [STAThread]
         static void Main()
         {
             var config = ConfigurationManager.AppSettings;
@@ -113,6 +113,7 @@ namespace mimori
                 ReadSetting("user1.name"), ReadSetting("User1.password"));
 
             imap = new IMAP(user.imapServer, user.imapPort);
+            imap.LoadHeaders();
             Thread fimap = new Thread(FetchImap);
             fimap.Start();
             var refreshTimer = new System.Timers.Timer();
@@ -135,23 +136,25 @@ namespace mimori
                 return;
             }
 
-            // Invoke() kell, különben thread-ek között adatmanipuláció miatt exception lesz
+            // Invoke() kell, különben thread-ek között adatmanipuláció miatt exception lesz.
             mw.dataGridView2.Invoke(new Action(() =>
             {
-                // kell egy másolat, mert ha az IMAP thread új elemet ad a foreach közben, exception lesz
+                // Kell egy másolat, mert ha az IMAP thread új elemet ad a foreach közben, exception lesz.
                 var listCopy = new List<IMAP.MessageHeader>(imap.headers);
+                //mw.dataGridView2.DataSource = listCopy.Select(o => new { Col_subject = o.Subject, Col_from = o.From, Col_date = o.Date } );
+                
                 foreach (IMAP.MessageHeader mh in listCopy)
                 {
                     if (!imap.displayedHeaders.Contains(mh.UID))
                     {
-                        DataGridViewRow row = (DataGridViewRow)mw.dataGridView2.Rows[0].Clone();
+                        DataGridViewRow row = (DataGridViewRow) mw.dataGridView2.Rows[0].Clone();
                         row.Cells[1].Value = mh.Subject;
                         row.Cells[2].Value = mh.From;
                         row.Cells[3].Value = mh.Date;
                         mw.dataGridView2.Rows.Add(row);
                         imap.displayedHeaders.Add(mh.UID);
                     }
-                }
+                }    
             }));
         }
 
