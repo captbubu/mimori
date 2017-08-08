@@ -26,5 +26,11 @@ namespace mimori
         {
 
         }
+
+        private void dataGridView2_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            DataGridView dgw = (DataGridView) sender;
+            
+        }
     }
 }

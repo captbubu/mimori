@@ -11,6 +11,8 @@ namespace mimori
 {
     public class IMAP
     {
+        enum Flags {  Seen, Answered, Flagged, Deleted, Draft }
+
         [Serializable]
         public class MessageHeader
         {
@@ -26,6 +28,7 @@ namespace mimori
             public string From { get; }
             public string Date { get; }
         }
+
 
         public string server { get; set; }
         public int port { get; set; }
@@ -66,6 +69,7 @@ namespace mimori
                     toSave.Add(mh);
                 }
             }
+            // FIXME :: path
             using (Stream stream = File.Open(@"c:\devel\testdata\imap.hd", FileMode.Append))
             {
                 var binForm = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
@@ -209,15 +213,24 @@ namespace mimori
                 {
                     string line;
                     var resplist = new List<string>();
-                    while ((line = sr.ReadLine()) != null) {
-                        GetNamedValue(line, "from", ref from);
+                    while ((line = sr.ReadLine()) != null)
+                    {
                         GetNamedValue(line, "subject", ref subject);
+                        GetNamedValue(line, "from", ref from);
                         GetNamedValue(line, "date", ref date);
                     }
                 }
                 headers.Add(new MessageHeader(uid : uid, from: from, subject: subject, date : date));
             }
             SaveHeaders();
+        }
+
+        public string GetMessage(int uid)
+        {
+            string message = null;
+
+            string response = Receive("UID FETCH " + uid + " BODY[]");
+            return response;
         }
 
         private string DecodeString(string instr)
@@ -266,16 +279,16 @@ namespace mimori
 
         private static string DecodeQuotedPrintables(string input, string charSet)
         {
-            if (string.IsNullOrEmpty(charSet))
-            {
-                var charSetOccurences = new Regex(@"=\?.*\?Q\?", RegexOptions.IgnoreCase);
-                var charSetMatches = charSetOccurences.Matches(input);
-                foreach (Match match in charSetMatches)
-                {
-                    charSet = match.Groups[0].Value.Replace("=?", "").Replace("?Q?", "");
-                    input = input.Replace(match.Groups[0].Value, "").Replace("?=", "");
-                }
-            }
+            //if (string.IsNullOrEmpty(charSet))
+            //{
+            //    var charSetOccurences = new Regex(@"=\?.*\?Q\?", RegexOptions.IgnoreCase);
+            //    var charSetMatches = charSetOccurences.Matches(input);
+            //    foreach (Match match in charSetMatches)
+            //    {
+            //        charSet = match.Groups[0].Value.Replace("=?", "").Replace("?Q?", "");
+            //        input = input.Replace(match.Groups[0].Value, "").Replace("?=", "");
+            //    }
+            //}
 
             Encoding enc = new ASCIIEncoding();
             if (!string.IsNullOrEmpty(charSet))
@@ -291,31 +304,42 @@ namespace mimori
             }
 
             //decode iso-8859-[0-9]
-            var occurences = new Regex(@"=[0-9A-Z]{2}", RegexOptions.Multiline);
-            var matches = occurences.Matches(input);
-            foreach (Match match in matches)
+            if (charSet.ToLower().StartsWith("iso-8859-"))
             {
-                try
+                var occurences = new Regex(@"=[0-9A-F]{2}", RegexOptions.Multiline);
+                var matches = occurences.Matches(input);
+                foreach (Match match in matches)
                 {
-                    byte[] b = new byte[] { byte.Parse(match.Groups[0].Value.Substring(1), System.Globalization.NumberStyles.AllowHexSpecifier) };
-                    char[] hexChar = enc.GetChars(b);
-                    input = input.Replace(match.Groups[0].Value, hexChar[0].ToString());
+                    try
+                    {
+                        byte[] b = new byte[] { byte.Parse(match.Groups[0].Value.Substring(1), System.Globalization.NumberStyles.AllowHexSpecifier) };
+                        char[] hexChar = enc.GetChars(b);
+                        input = input.Replace(match.Groups[0].Value, hexChar[0].ToString());
+                    }
+                    catch
+                    {; }
                 }
-                catch
-                {; }
             }
 
-            //decode base64String(utf-8 ? B ?)
-            occurences = new Regex(@"\?utf-8\?B\?.*\?", RegexOptions.IgnoreCase);
-            matches = occurences.Matches(input);
-            foreach (Match match in matches)
+            // decode UTF 8
+            if (charSet.ToLower().StartsWith("utf-8"))
             {
-                byte[] b = Convert.FromBase64String(match.Groups[0].Value.Replace("?utf-8?B?", "").Replace("?UTF-8?B?", "").Replace("?", ""));
-                string temp = Encoding.UTF8.GetString(b);
-                input = input.Replace(match.Groups[0].Value, temp);
+                var occurences = new Regex(@"=[0-9A-F]{2}=[0-9A-F]{2}", RegexOptions.Multiline);
+                var matches = occurences.Matches(input);
+                foreach (Match match in matches)
+                {
+                    string c1 = match.Groups[0].Value.Substring(1, 2);
+                    byte[] b = new byte[] { byte.Parse(c1, System.Globalization.NumberStyles.AllowHexSpecifier) };
+                    string c2 = match.Groups[0].Value.Substring(4, 2);
+                    byte[] b2 = new byte[] { byte.Parse(c2, System.Globalization.NumberStyles.AllowHexSpecifier) };
+                    byte[] b3 = { b[0], b2[0] };
+                    string utf8char = Encoding.UTF8.GetString(b3);
+                    input = input.Replace(match.Groups[0].Value, utf8char);
+                }
             }
 
             input = input.Replace("=\r\n", "");
+            input = input.Replace("_", " ");
 
             return input;
         }
