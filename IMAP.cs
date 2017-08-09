@@ -279,17 +279,6 @@ namespace mimori
 
         private static string DecodeQuotedPrintables(string input, string charSet)
         {
-            //if (string.IsNullOrEmpty(charSet))
-            //{
-            //    var charSetOccurences = new Regex(@"=\?.*\?Q\?", RegexOptions.IgnoreCase);
-            //    var charSetMatches = charSetOccurences.Matches(input);
-            //    foreach (Match match in charSetMatches)
-            //    {
-            //        charSet = match.Groups[0].Value.Replace("=?", "").Replace("?Q?", "");
-            //        input = input.Replace(match.Groups[0].Value, "").Replace("?=", "");
-            //    }
-            //}
-
             Encoding enc = new ASCIIEncoding();
             if (!string.IsNullOrEmpty(charSet))
             {
@@ -321,20 +310,21 @@ namespace mimori
                 }
             }
 
-            // decode UTF 8
             if (charSet.ToLower().StartsWith("utf-8"))
             {
-                var occurences = new Regex(@"=[0-9A-F]{2}=[0-9A-F]{2}", RegexOptions.Multiline);
-                var matches = occurences.Matches(input);
-                foreach (Match match in matches)
+                // Group 1 contains 1-4 matches of encoded characters
+                var hexcoded = new Regex(@"(?i)((?:=[0-9A-F]{2}){1,4})");
+                var matched = hexcoded.Matches(input);
+                foreach (Match match in matched)
                 {
-                    string c1 = match.Groups[0].Value.Substring(1, 2);
-                    byte[] b = new byte[] { byte.Parse(c1, System.Globalization.NumberStyles.AllowHexSpecifier) };
-                    string c2 = match.Groups[0].Value.Substring(4, 2);
-                    byte[] b2 = new byte[] { byte.Parse(c2, System.Globalization.NumberStyles.AllowHexSpecifier) };
-                    byte[] b3 = { b[0], b2[0] };
-                    string utf8char = Encoding.UTF8.GetString(b3);
-                    input = input.Replace(match.Groups[0].Value, utf8char);
+                    string[] utf8 = match.Groups[1].Value.Split(new char[] { '=' }, StringSplitOptions.RemoveEmptyEntries);
+                    byte[] utf8bytes = new byte[match.Groups[1].Length / 3];
+                    int index = 0;
+                    foreach (string hexbyte in utf8)
+                    {
+                        utf8bytes[index++] = byte.Parse(hexbyte, System.Globalization.NumberStyles.AllowHexSpecifier);
+                    }
+                    input = input.Replace(match.Groups[1].Value, Encoding.UTF8.GetString(utf8bytes));
                 }
             }
 
