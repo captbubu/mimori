@@ -220,6 +220,7 @@ namespace mimori
                     }
                 }
                 date = ConvertDate(date);
+                from = ConvertFrom(from);
                 headers.Add(new MessageHeader(uid : uid, from: from, subject: subject, date : date));
             }
             SaveHeaders();
@@ -253,6 +254,30 @@ namespace mimori
                 catch { ;; }
             }
             return newDate;
+        }
+
+        private string ConvertFrom(string from)
+        {
+            if (from == null)
+                return String.Empty;
+            string pattern = @"(?i)(""?)(.*)(?(1)"")";
+            Regex r = new Regex(pattern);
+            Match match = r.Match(from);
+            if (match.Success)
+            {
+                from = match.Groups[2].Value;
+            }
+            pattern = "(?i)(.*[^ ])[ ]?(<)([^>]*)(?(2)>)";
+            r = new Regex(pattern);
+            match = r.Match(from);
+            if (match.Success)
+            {
+                return match.Groups[1].Value;
+            }
+            else
+            {
+                return from;
+            }
         }
 
         private string DecodeString(string instr)
