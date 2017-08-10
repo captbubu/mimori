@@ -29,7 +29,6 @@ namespace mimori
             public string Date { get; }
         }
 
-
         public string server { get; set; }
         public int port { get; set; }
         private static TcpClient tcpc = null;
@@ -220,6 +219,7 @@ namespace mimori
                         GetNamedValue(line, "date", ref date);
                     }
                 }
+                date = ConvertDate(date);
                 headers.Add(new MessageHeader(uid : uid, from: from, subject: subject, date : date));
             }
             SaveHeaders();
@@ -231,6 +231,28 @@ namespace mimori
 
             string response = Receive("UID FETCH " + uid + " BODY[]");
             return response;
+        }
+
+        private string ConvertDate(string imapDate)
+        {
+            if (imapDate == null)
+                return String.Empty;
+
+            // RFC 5322, section 3.3
+            string newDate = String.Empty;
+            string pattern = @"(?i)(?:\w{3}, )*(\d{1,2}) (\w{3}) (\d{4}) (\d{2}:\d{2}):\d{2} ";
+            Regex r = new Regex(pattern);
+            Match match = r.Match(imapDate);
+            if (match.Success)
+            {
+                try
+                {
+                    int month = DateTime.Parse("1." + match.Groups[2].Value + " 1970").Month;
+                    newDate = $"{match.Groups[3].Value}.{month:d2}.{int.Parse(match.Groups[1].Value):d2} {match.Groups[4].Value}";
+                }
+                catch { ;; }
+            }
+            return newDate;
         }
 
         private string DecodeString(string instr)
@@ -322,7 +344,11 @@ namespace mimori
                     int index = 0;
                     foreach (string hexbyte in utf8)
                     {
-                        utf8bytes[index++] = byte.Parse(hexbyte, System.Globalization.NumberStyles.AllowHexSpecifier);
+                        try
+                        {
+                            utf8bytes[index++] = byte.Parse(hexbyte, System.Globalization.NumberStyles.AllowHexSpecifier);
+                        }
+                        catch { ;; }
                     }
                     input = input.Replace(match.Groups[1].Value, Encoding.UTF8.GetString(utf8bytes));
                 }
